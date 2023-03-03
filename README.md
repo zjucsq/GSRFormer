@@ -69,6 +69,12 @@ python -m torch.distributed.launch --nproc_per_node=4 --use_env main.py \
             --preprocess True \
            --num_workers 4 --num_enc_layers 6 --num_dec_layers 5 \
             --dropout 0.15 --hidden_dim 512 --output_dir GSRFormer
+python main.py \
+           --backbone resnet50 --dataset_file swig \
+		   --encoder_epochs 20 --decoder_epochs 25 \
+            --preprocess True \
+           --num_workers 4 --num_enc_layers 6 --num_dec_layers 5 \
+            --dropout 0.15 --hidden_dim 512 --output_dir GSRFormer/test
 ```
 
 - We use AdamW optimizer with learning rate 10<sup>-4</sup> (10<sup>-5</sup> for backbone), weight decay 10<sup>-4</sup> and β = (0.9, 0.999).    
@@ -78,7 +84,8 @@ python -m torch.distributed.launch --nproc_per_node=4 --use_env main.py \
 ## Evaluation
 ```bash
 python main.py --output_dir GSRFormer --dev
-python main.py --output_dir GSRFormer --test
+python main.py --output_dir GSRFormer --test --device cuda:1
+python zero_shot.py --output_dir GSRFormer/test --test --device cuda:0
 ```
 Model Checkpoint can be downloaded [here](https://drive.google.com/u/0/uc?id=1snS2aYo3R-rblQc0Ba7-YZ4mRdhq-6py&export=download)
 

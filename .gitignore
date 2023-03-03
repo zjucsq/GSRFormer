@@ -1,0 +1,9 @@
+__pycache__/
+__storage__/
+.idea/
+.vscode/
+GSRFormer/
+SWiG/images_512*
+SWiG/tmp
+debug/
+detectron2/

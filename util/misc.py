@@ -187,6 +187,12 @@ class MetricLogger(object):
                 "{}: {}".format(name, str(meter))
             )
         return self.delimiter.join(loss_str)
+    
+    def to_dict(self):
+        output_dict = {}
+        for name, meter in self.meters.items():
+            output_dict[name] = meter.global_avg
+        return output_dict
 
     def synchronize_between_processes(self):
         for meter in self.meters.values():
