@@ -9,8 +9,15 @@
 
 from .gsrformer import build_encoder_transformer
 from .gsrformer import build_decoder_transformer
+from .ov_gsrformer import build_encoder_transformer as build_ov_encoder_transformer
+from .ov_gsrformer import build_decoder_transformer as build_ov_decoder_transformer
 
 def build_encoder_model(args):
     return build_encoder_transformer(args)
 def build_decoder_model(args):
     return build_decoder_transformer(args)
+
+def build_ov_encoder_model(args, verb_features, noun_features, dataset, device):
+    return build_ov_encoder_transformer(args, verb_features, noun_features, dataset, device)
+def build_ov_decoder_model(args, verb_features, noun_features, dataset, device):
+    return build_ov_decoder_transformer(args, verb_features, noun_features, dataset, device)

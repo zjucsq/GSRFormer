@@ -10,6 +10,7 @@ import cv2
 import tqdm
 import torch
 import json
+import clip
 from pathlib import Path
 
 from detectron2.config import get_cfg
@@ -43,6 +44,7 @@ class VisualizationDemo(object):
         else:
             self.predictor = DefaultPredictor(cfg)
 
+
 def setup_cfg(confidence_threshold, config_file, opts):
     # load config from file and command-line arguments
     cfg = get_cfg()
@@ -60,14 +62,16 @@ def setup_cfg(confidence_threshold, config_file, opts):
 
 
 def get_parser():
-    parser = argparse.ArgumentParser(description="Detectron2 demo for builtin configs")
+    parser = argparse.ArgumentParser(
+        description="Detectron2 demo for builtin configs")
     parser.add_argument(
         "--config-file",
         default="configs/quick_schedules/mask_rcnn_R_50_FPN_inference_acc_test.yaml",
         metavar="FILE",
         help="path to config file",
     )
-    parser.add_argument("--webcam", action="store_true", help="Take inputs from webcam.")
+    parser.add_argument("--webcam", action="store_true",
+                        help="Take inputs from webcam.")
     parser.add_argument("--video-input", help="Path to video file.")
     parser.add_argument(
         "--input",
@@ -97,12 +101,13 @@ def get_parser():
 
 
 def load_mask_rcnn_model(confidence_threshold=0.5, config_file="/home/csq/gsr/GSRFormer/detectron2/configs/COCO-InstanceSegmentation/mask_rcnn_R_50_FPN_3x.yaml",
-              opts=['MODEL.WEIGHTS', 'detectron2://COCO-InstanceSegmentation/mask_rcnn_R_50_FPN_3x/137849600/model_final_f10217.pkl']):
+                         opts=['MODEL.WEIGHTS', 'detectron2://COCO-InstanceSegmentation/mask_rcnn_R_50_FPN_3x/137849600/model_final_f10217.pkl']):
     mp.set_start_method("spawn", force=True)
     # args = get_parser().parse_args()
     setup_logger(name="fvcore")
     logger = setup_logger()
-    logger.info("confidence_threshold: {}, config_file: {}, opts: {}".format(confidence_threshold, config_file, opts))
+    logger.info("confidence_threshold: {}, config_file: {}, opts: {}".format(
+        confidence_threshold, config_file, opts))
 
     cfg = setup_cfg(confidence_threshold, config_file, opts)
 
@@ -124,20 +129,20 @@ def build_random_output(device):
     return outputs
 
 
-def write_log(output_dir, output_dict, cnt, is_test=True):
+def write_log(output_dir, output_dict, epoch, type="test"):
     output_dir = Path(output_dir)
-    with (output_dir / ("res_dev_{}.txt".format(cnt)
-            if not is_test else "res_test_{}.txt".format(cnt))).open("a") as f:
+    with (output_dir / ("res_{}_{}.txt".format(type, epoch))).open("a") as f:
         f.write(json.dumps(output_dict) + "\n")
     with open(
             output_dir /
-            ("res_dev_{}.json".format(cnt) if not is_test else "res_test_{}.json".format(cnt)),
+            ("res_{}_{}.json".format(type, epoch)),
             "w") as f1:
         json.dump(output_dict, f1)
 
 
 if __name__ == "__main__":
     model = load_mask_rcnn_model()
-    img = read_image("/home/csq/gsr/GSRFormer/SWiG/images_512_mini/yawning_9.jpg", format="BGR")
+    img = read_image(
+        "/home/csq/gsr/GSRFormer/SWiG/images_512_mini/yawning_9.jpg", format="BGR")
     predictions = model(img)
     print(predictions)

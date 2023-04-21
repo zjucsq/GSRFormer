@@ -90,7 +90,7 @@ def encoder_train_one_epoch(model: torch.nn.Module,
 
 
 def preprocess_neighbors(model: torch.nn.Module, data_loader: Iterable,
-                         image_set, device, images_per_segment):
+                         image_set, device, images_per_segment, output_folder, ov):
     """Caculates the Nearest Neighbor Dictionary and store it to disk"""
     """
     Training Dataset: 75702
@@ -142,7 +142,10 @@ def preprocess_neighbors(model: torch.nn.Module, data_loader: Iterable,
             all_features, all_role_tokens = torch.zeros(
                 0, device=device), torch.zeros(0, device=device)
     neighbor_dict_json = json.dumps(neighbors_dict)
-    f = open(f"__storage__/{image_set}Dict.json", "w")
+    if ov:
+        f = open(f"__storage__/{output_folder}/ov_{image_set}Dict.json", "w")
+    else:
+        f = open(f"__storage__/{output_folder}/{image_set}Dict.json", "w")
     f.write(neighbor_dict_json)
     f.close()
 
@@ -234,10 +237,13 @@ def decoder_train_one_epoch(model: torch.nn.Module,
 
 
 @torch.no_grad()
-def encoder_evaluate_swig(model, criterion, data_loader, device, output_dir):
+def encoder_evaluate_swig(model, criterion, data_loader, device, output_dir, base_verb=None):
     model.eval()
     criterion.eval()
     metric_logger = utils.MetricLogger(delimiter="  ")
+    if base_verb is not None:
+        metric_logger_base = utils.MetricLogger(delimiter="  ")
+        metric_logger_novel = utils.MetricLogger(delimiter="  ")
     header = 'Test:'
     print_freq = 10
 
@@ -273,20 +279,37 @@ def encoder_evaluate_swig(model, criterion, data_loader, device, output_dir):
                              **loss_dict_reduced_scaled,
                              **loss_dict_reduced_unscaled)
 
+        if base_verb is not None:
+            if targets[0]['is_novel'] == 'base':
+                metric_logger_base.update(loss=loss_value,
+                             **loss_dict_reduced_scaled,
+                             **loss_dict_reduced_unscaled)
+            else:
+                metric_logger_novel.update(loss=loss_value,
+                             **loss_dict_reduced_scaled,
+                             **loss_dict_reduced_unscaled)
+
     # gather the stats from all processes
     metric_logger.synchronize_between_processes()
     print("Averaged stats:", metric_logger)
     stats = {k: meter.global_avg for k, meter in metric_logger.meters.items()}
 
-    return stats
-
+    if base_verb is not None:
+        stats_base = {k: meter.global_avg for k, meter in metric_logger_base.meters.items()}
+        stats_novel = {k: meter.global_avg for k, meter in metric_logger_novel.meters.items()}
+        return stats, stats_base, stats_novel
+    else:
+        return stats
 
 @torch.no_grad()
 def evaluate_swig(encoder, decoder, criterion, data_loader, device,
-                  output_dir):
+                  output_dir, base_verb=None):
     decoder.eval()
     criterion.eval()
     metric_logger = utils.MetricLogger(delimiter="  ")
+    if base_verb is not None:
+        metric_logger_base = utils.MetricLogger(delimiter="  ")
+        metric_logger_novel = utils.MetricLogger(delimiter="  ")
     header = 'Test:'
     print_freq = 10
     num_neighbors = 5
@@ -305,6 +328,7 @@ def evaluate_swig(encoder, decoder, criterion, data_loader, device,
         features = outs["features"]
         role_tokens = outs["role_tokens"]
         outputs = decoder(features, role_tokens)
+        # only the first image is useful
         loss_dict = criterion(
             outputs, [targets[i] for i in range(0, len(targets), step)],
             eval=True)
@@ -328,12 +352,28 @@ def evaluate_swig(encoder, decoder, criterion, data_loader, device,
                              **loss_dict_reduced_scaled,
                              **loss_dict_reduced_unscaled)
 
+        if base_verb is not None:
+            # assert(len(targets) == 1)
+            if targets[0]['is_novel'] == 'base':
+                metric_logger_base.update(loss=loss_value,
+                             **loss_dict_reduced_scaled,
+                             **loss_dict_reduced_unscaled)
+            else:
+                metric_logger_novel.update(loss=loss_value,
+                             **loss_dict_reduced_scaled,
+                             **loss_dict_reduced_unscaled)
+
     # gather the stats from all processes
     metric_logger.synchronize_between_processes()
     print("Averaged stats:", metric_logger)
     stats = {k: meter.global_avg for k, meter in metric_logger.meters.items()}
 
-    return stats
+    if base_verb is not None:
+        stats_base = {k: meter.global_avg for k, meter in metric_logger_base.meters.items()}
+        stats_novel = {k: meter.global_avg for k, meter in metric_logger_novel.meters.items()}
+        return stats, stats_base, stats_novel
+    else:
+        return stats
 
 
 def get_neighbors(features):
